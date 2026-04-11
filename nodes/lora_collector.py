@@ -17,13 +17,15 @@ class LoraCollector:
     def INPUT_TYPES(cls) -> dict[str, Any]:
         return {
             "required": {
-                "lora_loader_node_id": ("STRING", {
-                    "default": "",
-                    "multiline": False,
+                "lora_loader_node_id": ("INT", {
+                    "default": 0, "min": 0, "max": 9999,
                     "tooltip": "The node ID of the Power Lora Loader (rgthree) to read from"
                 }),
             },
             "optional": {
+                "opt_model": ("MODEL", {
+                    "tooltip": "Connect the MODEL output from Power Lora Loader here to ensure execution order (value not used)"
+                }),
                 "include_disabled": ("BOOLEAN", {
                     "default": True,
                     "tooltip": "Include disabled LoRAs in the output (marked as enabled: false)"
@@ -48,7 +50,8 @@ class LoraCollector:
 
     def collect(
         self,
-        lora_loader_node_id: str,
+        lora_loader_node_id: int,
+        opt_model=None,
         include_disabled: bool = True,
         download_civitai_data: bool = True,
         prompt: dict[str, Any] | None = None,
@@ -58,7 +61,7 @@ class LoraCollector:
             return ([],)
 
         # Read the Power Lora Loader node from the execution prompt
-        node = prompt.get(lora_loader_node_id)
+        node = prompt.get(str(lora_loader_node_id))
         if node is None:
             print(f"LoraCollector: Node {lora_loader_node_id} not found in prompt")
             return ([],)
