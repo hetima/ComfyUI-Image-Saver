@@ -1,12 +1,12 @@
-import hashlib
 import os
+import re
 import requests
+import json
+from pathlib import Path
 from typing import Optional, Any
 from collections.abc import Collection, Iterator
-from pathlib import Path
-from tqdm import tqdm
+from datetime import datetime
 import folder_paths
-import re
 
 def sanitize_filename(filename: str) -> str:
     """Remove characters that are unsafe for filenames."""
@@ -17,40 +17,6 @@ def sanitize_filename(filename: str) -> str:
     # Remove trailing periods and spaces (problematic on Windows)
     sanitized = sanitized.rstrip('. ')
     return sanitized
-
-def get_sha256(file_path: str) -> str:
-    """
-    Given the file path, finds a matching sha256 file, or creates one
-    based on the headers in the source file
-    """
-    file_no_ext = os.path.splitext(file_path)[0]
-    hash_file = file_no_ext + ".sha256"
-
-    if os.path.exists(hash_file):
-        try:
-            with open(hash_file, "r") as f:
-                return f.read().strip()
-        except OSError as e:
-            print(f"ComfyUI-Image-Saver: Error reading existing hash file: {e}")
-
-    sha256_hash = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        file_size = os.fstat(f.fileno()).st_size
-        block_size = 1048576 # 1 MB
-
-        print(f"ComfyUI-Image-Saver: Calculating sha256 for '{Path(file_path).stem}'")
-        with tqdm(None, None, file_size, unit="B", unit_scale=True, unit_divisor=1024) as progress_bar:
-            for byte_block in iter(lambda: f.read(block_size), b""):
-                progress_bar.update(len(byte_block))
-                sha256_hash.update(byte_block)
-
-    try:
-        with open(hash_file, "w") as f:
-            f.write(sha256_hash.hexdigest())
-    except OSError as e:
-        print(f"ComfyUI-Image-Saver: Error writing hash to {hash_file}: {e}")
-
-    return sha256_hash.hexdigest()
 
 def full_embedding_path_for(embedding: str) -> Optional[str]:
     """
@@ -149,3 +115,83 @@ def http_get_json(url: str) ->  dict[str, Any] | None:
     except ValueError as e:
         print(f"ComfyUI-Image-Saver: HTTP Response JSON error: {e}")
     return None
+
+def parse_checkpoint_name(ckpt_name: str) -> str:
+    return os.path.basename(ckpt_name)
+
+def parse_checkpoint_name_without_extension(ckpt_name: str) -> str:
+    filename = parse_checkpoint_name(ckpt_name)
+    name_without_ext, ext = os.path.splitext(filename)
+    supported_extensions = folder_paths.supported_pt_extensions | {".gguf"}
+
+    # Only remove extension if it's a known model file extension
+    if ext.lower() in supported_extensions:
+        return name_without_ext
+    else:
+        return filename # Keep full name if extension isn't recognized
+
+def get_timestamp(time_format: str) -> str:
+    now = datetime.now()
+    try:
+        timestamp = now.strftime(time_format)
+    except:
+        timestamp = now.strftime("%Y-%m-%d-%H%M%S")
+
+    return timestamp
+
+def apply_custom_time_format(filename: str) -> str:
+    """
+    Replace %time_format<strftime_format> patterns with formatted datetime.
+    Example: %time_format<%Y-%m-%d> becomes 2026-01-17
+    """
+    now = datetime.now()
+    # Pattern to match %time_format<XXX> where XXX is any strftime format string
+    # Use negative lookahead to exclude %time_format itself from variable delimiters
+    pattern = r'%time_format<([^>]*)>'
+    def replace_format(match):
+        format_str = match.group(1)
+        try:
+            return now.strftime(format_str)
+        except:
+            # If format is invalid, return original
+            return match.group(0)
+
+    return re.sub(pattern, replace_format, filename)
+
+def save_json(image_info: dict[str, Any] | None, filename: str) -> None:
+    try:
+        workflow = (image_info or {}).get('workflow')
+        if workflow is None:
+            print('No image info found, skipping saving of JSON')
+        with open(f'{filename}.json', 'w') as workflow_file:
+            json.dump(workflow, workflow_file)
+            print(f'Saved workflow to {filename}.json')
+    except Exception as e:
+        print(f'Failed to save workflow as json due to: {e}, proceeding with the remainder of saving execution')
+
+def make_pathname(filename: str, width: int, height: int, seed: int, modelname: str, counter: int, time_format: str, sampler_name: str, steps: int, cfg: float, scheduler_name: str, denoise: float, clip_skip: int, custom: str) -> str:
+    # Process custom time_format patterns first
+    filename = apply_custom_time_format(filename)
+    filename = filename.replace("%date", get_timestamp("%Y-%m-%d"))
+    filename = filename.replace("%time", get_timestamp(time_format))
+    filename = filename.replace("%model", parse_checkpoint_name(modelname))
+    filename = filename.replace("%width", str(width))
+    filename = filename.replace("%height", str(height))
+    filename = filename.replace("%seed", str(seed))
+    filename = filename.replace("%counter", str(counter))
+    filename = filename.replace("%sampler_name", sampler_name)
+    filename = filename.replace("%steps", str(steps))
+    filename = filename.replace("%cfg", str(cfg))
+    filename = filename.replace("%scheduler_name", scheduler_name)
+    filename = filename.replace("%basemodelname", parse_checkpoint_name_without_extension(modelname))
+    filename = filename.replace("%denoise", str(denoise))
+    filename = filename.replace("%clip_skip", str(clip_skip))
+    filename = filename.replace("%custom", custom)
+
+    directory, basename = os.path.split(filename)
+    sanitized_basename = sanitize_filename(basename)
+    return os.path.join(directory, sanitized_basename)
+
+def make_filename(filename: str, width: int, height: int, seed: int, modelname: str, counter: int, time_format: str, sampler_name: str, steps: int, cfg: float, scheduler_name: str, denoise: float, clip_skip: int, custom: str) -> str:
+    filename = make_pathname(filename, width, height, seed, modelname, counter, time_format, sampler_name, steps, cfg, scheduler_name, denoise, clip_skip, custom)
+    return get_timestamp(time_format) if filename == "" else filename

@@ -1,18 +1,20 @@
 from typing import Any
 
-from .nodes import ImageSaver, ImageSaverSimple, ImageSaverMetadata
-from .nodes_literals import SeedGenerator, StringLiteral, SizeLiteral, IntLiteral, FloatLiteral, CfgLiteral, ConditioningConcatOptional, RandomShapeGenerator
-from .nodes_loaders import CheckpointLoaderWithName, UNETLoaderWithName
-from .nodes_selectors import SamplerSelector, SchedulerSelector, SchedulerSelectorInspire, SchedulerSelectorEfficiency, InputParameters, AnyToString, WorkflowInputValue
-from .civitai_nodes import CivitaiHashFetcher
-from .random_tag_picker import RandomTagPicker
+from .nodes.metadata import MetadataCompiler
+from .nodes.saver import ImageSaver, ImageSaverSimple
+from .nodes.loaders import CheckpointLoaderWithName, UNETLoaderWithName
+from .nodes.selectors import SamplerSelector, SchedulerSelector, SchedulerSelectorInspire, SchedulerSelectorEfficiency, InputParameters
+from .nodes.introspection import AnyToString, WorkflowInputValue
+from .nodes.literals import SeedGenerator, StringLiteral, SizeLiteral, IntLiteral, FloatLiteral, CfgLiteral
+from .nodes.deprecated import ConditioningConcatOptional, RandomShapeGenerator, CivitaiHashFetcher, RandomTagPicker
 
+# Display names must match exactly — ComfyUI workflows reference these strings
 NODE_CLASS_MAPPINGS: dict[str, Any] = {
     "Checkpoint Loader with Name (Image Saver)": CheckpointLoaderWithName,
     "UNet loader with Name (Image Saver)": UNETLoaderWithName,
     "Image Saver": ImageSaver,
     "Image Saver Simple": ImageSaverSimple,
-    "Image Saver Metadata": ImageSaverMetadata,
+    "Image Saver Metadata": MetadataCompiler,
     "Sampler Selector (Image Saver)": SamplerSelector,
     "Scheduler Selector (Image Saver)": SchedulerSelector,
     "Scheduler Selector (inspire) (Image Saver)": SchedulerSelectorInspire,

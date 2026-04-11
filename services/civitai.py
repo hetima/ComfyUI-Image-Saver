@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple, Any
 
 import folder_paths
 
-from .utils import http_get_json
+from .file_utils import http_get_json
 
 MAX_HASH_LENGTH = 16 # skip larger unshortened hashes, such as full sha256 or blake3
 

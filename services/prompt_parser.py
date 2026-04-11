@@ -2,8 +2,9 @@ import re
 from typing import List, Dict, Tuple
 from comfy.sd1_clip import escape_important, unescape_important, token_weights
 
-from .utils import full_embedding_path_for, full_lora_path_for, get_sha256
-from .utils_civitai import civitai_embedding_key_name, civitai_lora_key_name
+from .file_utils import full_embedding_path_for, full_lora_path_for
+from .hashing import get_sha256
+from .civitai import civitai_embedding_key_name, civitai_lora_key_name
 
 """
 Extracts Embeddings and Lora's from the given prompts

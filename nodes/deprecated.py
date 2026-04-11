@@ -1,129 +1,20 @@
-from sys import float_info
-from typing import Any
-from nodes import MAX_RESOLUTION
-import torch
+import warnings
 
+# These nodes are deprecated and will be removed in a future release.
+# They are not related to the core image saving functionality.
+
+# Import the original implementations
+import torch
 import numpy as np
 from PIL import Image, ImageDraw
-import random
 import math
+import random
+import csv
+import os
+import requests
+from typing import Any
+from nodes import MAX_RESOLUTION
 
-class SeedGenerator:
-    RETURN_TYPES = ("INT",)
-    OUTPUT_TOOLTIPS = ("seed (INT)",)
-    FUNCTION = "get_seed"
-
-    CATEGORY = "ImageSaver/utils"
-    DESCRIPTION = "Provides seed as integer"
-
-    @classmethod
-    def INPUT_TYPES(cls) -> dict[str, Any]:
-        return {
-            "required": {
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "tooltip": "The random seed used for creating the noise."}),
-                "increment": ("INT", {"default": 0, "min": -0xffffffffffffffff, "max": 0xffffffffffffffff, "tooltip": "number to add to the final seed value"}),
-            }
-        }
-
-    def get_seed(self, seed: int, increment: int) -> tuple[int,]:
-        return (seed + increment,)
-
-class StringLiteral:
-    RETURN_TYPES = ("STRING",)
-    OUTPUT_TOOLTIPS = ("string (STRING)",)
-    FUNCTION = "get_string"
-
-    CATEGORY = "ImageSaver/utils"
-    DESCRIPTION = "Provides a string"
-
-    @classmethod
-    def INPUT_TYPES(cls) -> dict[str, Any]:
-        return {
-            "required": {
-                "string": ("STRING", {"default": "", "multiline": True, "tooltip": "string"}),
-            }
-        }
-
-    def get_string(self, string: str) -> tuple[str,] :
-        return (string,)
-
-class SizeLiteral:
-    RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("size",)
-    OUTPUT_TOOLTIPS = ("size (INT)",)
-    FUNCTION = "get_int"
-
-    CATEGORY = "ImageSaver/utils"
-    DESCRIPTION = f"Provides integer number between 0 and {MAX_RESOLUTION} (step=8)"
-
-    @classmethod
-    def INPUT_TYPES(cls) -> dict[str, Any]:
-        return {
-            "required": {
-                "size": ("INT", {"default": 512, "min": 0, "max": MAX_RESOLUTION, "step": 8, "tooltip": "size as integer (in steps of 8)"}),
-            }
-        }
-
-    def get_int(self, size: int) -> tuple[int,]:
-        return (size,)
-
-class IntLiteral:
-    RETURN_TYPES = ("INT",)
-    OUTPUT_TOOLTIPS = ("int (INT)",)
-    FUNCTION = "get_int"
-
-    CATEGORY = "ImageSaver/utils"
-    DESCRIPTION = "Provides integer number between 0 and 1000000"
-
-    @classmethod
-    def INPUT_TYPES(cls) -> dict[str, Any]:
-        return {
-            "required": {
-                "int": ("INT", {"default": 0, "min": 0, "max": 1000000, "tooltip": "integer number"}),
-            }
-        }
-
-    def get_int(self, int: int) -> tuple[int,]:
-        return (int,)
-
-class FloatLiteral:
-    RETURN_TYPES = ("FLOAT",)
-    OUTPUT_TOOLTIPS = ("float (FLOAT)",)
-    FUNCTION = "get_float"
-
-    CATEGORY = "ImageSaver/utils"
-    DESCRIPTION = f"Provides a floating point number between {float_info.min} and {float_info.max} (step=0.01)"
-
-    @classmethod
-    def INPUT_TYPES(cls) -> dict[str, Any]:
-        return {
-            "required": {
-                "float": ("FLOAT", {"default": 1.0, "min": float_info.min, "max": float_info.max, "step": 0.01, "tooltip": "floating point number"}),
-            }
-        }
-
-    def get_float(self, float: float):
-        return (float,)
-
-class CfgLiteral:
-    RETURN_TYPES = ("FLOAT",)
-    RETURN_NAMES = ("value",)
-    OUTPUT_TOOLTIPS = ("cfg (FLOAT)",)
-    FUNCTION = "get_float"
-
-    CATEGORY = "ImageSaver/utils"
-    DESCRIPTION = "Provides CFG value between 0.0 and 100.0"
-
-    @classmethod
-    def INPUT_TYPES(cls) -> dict[str, Any]:
-        return {
-            "required": {
-                "cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 100.0, "tooltip": "CFG as a floating point number"}),
-            }
-        }
-
-    def get_float(self, cfg: float) -> tuple[float,]:
-        return (cfg,)
 
 class ConditioningConcatOptional:
     @classmethod
@@ -142,6 +33,7 @@ class ConditioningConcatOptional:
     CATEGORY = "conditioning"
 
     def concat(self, conditioning_to, conditioning_from=None):
+        warnings.warn("ConditioningConcatOptional is deprecated and will be removed in a future release.", DeprecationWarning, stacklevel=2)
         if conditioning_from is None:
             return (conditioning_to,)
 
@@ -157,6 +49,7 @@ class ConditioningConcatOptional:
             out.append(n)
 
         return (out,)
+
 
 class RandomShapeGenerator:
     """
@@ -307,6 +200,7 @@ class RandomShapeGenerator:
 
     def generate_shape(self, width: int, height: int, bg_color: str, fg_color: str, shape_type: str, seed: int, bg_color_override: str = "", fg_color_override: str = "") -> tuple[torch.Tensor, str, str]:
         """Generate an image with a random shape."""
+        warnings.warn("RandomShapeGenerator is deprecated and will be removed in a future release.", DeprecationWarning, stacklevel=2)
 
         # Set random seed for reproducibility
         random.seed(seed)
@@ -356,3 +250,181 @@ class RandomShapeGenerator:
 
         return (img_tensor, bg_rgb_str, fg_rgb_str)
 
+
+class CivitaiHashFetcher:
+    """
+    A ComfyUI custom node that fetches the AutoV3 hash of a model from Civitai
+    based on the provided username and model name.
+    """
+
+    def __init__(self):
+        self.last_username = None
+        self.last_model_name = None
+        self.last_version = None
+        self.last_hash = None  # Store the last fetched hash
+
+    RETURN_TYPES = ("STRING",)  # The node outputs a string (AutoV3 hash)
+    FUNCTION = "get_autov3_hash"
+    CATEGORY = "CivitaiAPI"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "username": ("STRING", {"default": "", "multiline": False}),
+                "model_name": ("STRING", {"default": "", "multiline": False}),
+            },
+            "optional": {
+                "version": ("STRING", {"default": "", "multiline": False, "tooltip": "Specify version keyword to fetch a particular model version (optional)"}),
+            }
+        }
+
+    def get_autov3_hash(self, username, model_name, version=""):
+        """
+        Fetches the latest model version from Civitai and extracts its AutoV3 hash.
+        Uses caching to avoid redundant API calls.
+        """
+        warnings.warn("CivitaiHashFetcher is deprecated and will be removed in a future release.", DeprecationWarning, stacklevel=2)
+
+        # Check if inputs are the same as last time
+        if (self.last_username is not None and self.last_model_name is not None and self.last_version is not None and
+            username == self.last_username and model_name == self.last_model_name and version == self.last_version):
+            return self.last_hash
+
+        base_url = "https://civitai.com/api/v1/models"
+        params = {
+            "username": username,
+            "query": model_name,
+            "limit": 20,  # Fetch more results due to API ranking issues
+            "nsfw": "true"  # Include NSFW models in search results
+        }
+
+        try:
+            # Fetch models by username and model name
+            response = requests.get(base_url, params=params, timeout=10)
+            if response.status_code != 200:
+                return (f"Error: API request failed with status {response.status_code}",)
+
+            data = response.json()
+            items = data.get("items", [])
+
+            # If no results with query, try without query (fallback for API search issues)
+            if not items and params.get("query"):
+                print("ComfyUI-Image-Saver: No results with query, trying without query parameter...")
+                params_no_query = {
+                    "username": username,
+                    "limit": 100,
+                    "nsfw": "true"
+                }
+                response = requests.get(base_url, params=params_no_query, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    items = data.get("items", [])
+
+            if not items:
+                return (f"No models found for user '{username}' with name '{model_name}'",)
+
+            # Find best matching model (prefer exact/partial matches)
+            model_name_lower = model_name.lower()
+            best_match = None
+
+            # Try exact match first
+            for item in items:
+                if item.get("name", "").lower() == model_name_lower:
+                    best_match = item
+                    break
+
+            # If no exact match, try partial match
+            if not best_match:
+                for item in items:
+                    item_name_lower = item.get("name", "").lower()
+                    if model_name_lower in item_name_lower or item_name_lower.startswith(model_name_lower):
+                        best_match = item
+                        break
+
+            # Fall back to first result if no good match
+            if not best_match:
+                best_match = items[0]
+
+            model = best_match
+            model_versions = model.get("modelVersions", [])
+            if not model_versions:
+                return ("No model versions found.",)
+
+            # If a version keyword is provided, search for a model version whose name contains it (case-insensitive).
+            chosen_version = None
+            if version:
+                for v in model_versions:
+                    if version.lower() in v.get("name", "").lower():
+                        chosen_version = v
+                        break
+            # If no version is provided or no match was found, use the first (latest) version.
+            if chosen_version is None:
+                chosen_version = model_versions[0]
+            version_id = chosen_version.get("id")
+
+            # Fetch detailed version info
+            version_url = f"https://civitai.com/api/v1/model-versions/{version_id}"
+            version_response = requests.get(version_url, timeout=10)
+            if version_response.status_code != 200:
+                return (f"Error: Version API request failed with status {version_response.status_code}",)
+
+            version_data = version_response.json()
+
+            # Extract the AutoV3 hash from the model version files
+            for file_info in version_data.get("files", []):
+                autov3_hash = file_info.get("hashes", {}).get("AutoV3")
+                if autov3_hash:
+                    # Cache the result before returning
+                    self.last_username = username
+                    self.last_model_name = model_name
+                    self.last_version = version  # Store version to track changes
+                    self.last_hash = autov3_hash
+                    return (autov3_hash,)  # Return the first found hash
+
+            return ("No AutoV3 hash found in version files.",)
+
+        except Exception as e:
+            return (f"Error: {e}",)
+
+
+class RandomTagPicker:
+    """Pick N random tags from a CSV file (first column) and join them with a delimiter."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "file_path": ("STRING", {"default": "", "multiline": False}),
+                "count": ("INT", {"default": 5, "min": 1, "max": 1000, "step": 1}),
+                "delimiter": ("STRING", {"default": ", ", "multiline": False}),
+                "replace_underscore": ("BOOLEAN", {"default": False}),
+                "trailing_comma": ("BOOLEAN", {"default": False}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("tags",)
+    FUNCTION = "pick_random_tags"
+    CATEGORY = "utils"
+
+    def pick_random_tags(self, file_path: str, count: int, delimiter: str, replace_underscore: bool, trailing_comma: bool, seed: int) -> tuple[str]:
+        warnings.warn("RandomTagPicker is deprecated and will be removed in a future release.", DeprecationWarning, stacklevel=2)
+        with open(os.path.expanduser(file_path), newline="", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+            if rows and rows[0][0].strip().lower() == "tag":
+                rows = rows[1:]
+
+        tags = [row[0] for row in rows if row and row[0].strip()]
+        sample_size = min(count, len(tags))
+        rng = random.Random(seed)
+        selected = rng.sample(tags, sample_size)
+        if replace_underscore:
+            selected = [t.replace("_", " ") for t in selected]
+        escaped = [t.replace("(", "\\(").replace(")", "\\)") for t in selected]
+        result = delimiter.join(escaped)
+        if trailing_comma:
+            result += ","
+        return (result,)
