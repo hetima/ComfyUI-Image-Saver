@@ -5,7 +5,7 @@ from .nodes.lora_collector import LoraCollector
 from .nodes.saver import ImageSaver, ImageSaverSimple
 from .nodes.loaders import CheckpointLoaderWithName, UNETLoaderWithName
 from .nodes.selectors import SamplerSelector, SchedulerSelector, SchedulerSelectorInspire, SchedulerSelectorEfficiency, InputParameters
-from .nodes.introspection import AnyToString, WorkflowInputValue
+from .nodes.introspection import AnyToString, WorkflowInputValue, WorkflowMetadataResolver
 from .nodes.literals import SeedGenerator, StringLiteral, SizeLiteral, IntLiteral, FloatLiteral, CfgLiteral
 from .nodes.deprecated import ConditioningConcatOptional, RandomShapeGenerator, CivitaiHashFetcher, RandomTagPicker
 
@@ -24,6 +24,7 @@ NODE_CLASS_MAPPINGS: dict[str, Any] = {
     "Input Parameters (Image Saver)": InputParameters,
     "Any to String (Image Saver)": AnyToString,
     "Workflow Input Value (Image Saver)": WorkflowInputValue,
+    "Workflow Metadata Resolver (Image Saver)": WorkflowMetadataResolver,
     "Seed Generator (Image Saver)": SeedGenerator,
     "String Literal (Image Saver)": StringLiteral,
     "Width/Height Literal (Image Saver)": SizeLiteral,
