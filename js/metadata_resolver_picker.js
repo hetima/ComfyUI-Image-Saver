@@ -198,19 +198,41 @@ function injectStyles() {
     if (document.getElementById("imgsaver-resolver-css")) return;
     const style = document.createElement("style");
     style.id = "imgsaver-resolver-css";
+    // Themed via ComfyUI / PrimeVue CSS variables (with literal fallbacks) so the
+    // editor follows the active theme — light, dark, or custom — in both the
+    // classic and Nodes 2.0 renderers.
     style.textContent = `
-        .imgsaver-resolver { display:flex; flex-direction:column; gap:3px; padding:4px 2px; font-size:11px; box-sizing:border-box; }
-        .imgsaver-resolver .row { display:flex; gap:3px; align-items:center; }
-        .imgsaver-resolver input.field { flex:0 0 84px; min-width:0; }
-        .imgsaver-resolver select { flex:1 1 0; min-width:0; }
+        .imgsaver-resolver {
+            display:flex; flex-direction:column; gap:3px; padding:4px 2px;
+            font-size:11px; box-sizing:border-box; color:var(--input-text, #ddd); }
+        .imgsaver-resolver .row { display:flex; gap:3px; align-items:center; border-radius:4px; }
+        .imgsaver-resolver input.field { flex:0 0 88px; min-width:0; }
+        .imgsaver-resolver select { flex:1 1 0; min-width:0; text-overflow:ellipsis; }
         .imgsaver-resolver input, .imgsaver-resolver select {
-            background:#222; color:#ddd; border:1px solid #444; border-radius:4px; padding:2px 4px; font-size:11px; height:20px; }
-        .imgsaver-resolver .row.invalid input.field { border-color:#c0504d; }
-        .imgsaver-resolver .row.invalid select.bad { border-color:#c0504d; color:#e08; }
-        .imgsaver-resolver button { background:#333; color:#ddd; border:1px solid #444; border-radius:4px; cursor:pointer; font-size:11px; height:20px; }
-        .imgsaver-resolver button.remove { flex:0 0 22px; }
-        .imgsaver-resolver .toolbar { display:flex; gap:4px; margin-top:2px; }
-        .imgsaver-resolver .toolbar button { flex:1 1 0; height:22px; }
+            background:var(--comfy-input-bg, #222); color:var(--input-text, #ddd);
+            border:1px solid var(--border-color, #444); border-radius:4px;
+            padding:2px 6px; font-size:11px; height:22px; box-sizing:border-box; }
+        .imgsaver-resolver input:focus, .imgsaver-resolver select:focus {
+            outline:none; border-color:var(--p-primary-color, #4a90d9); }
+        /* unbound (placeholder) rows read dimmer */
+        .imgsaver-resolver .row.unbound input.field {
+            color:var(--descrip-text, #888); font-style:italic; }
+        .imgsaver-resolver .row.unbound select { opacity:0.6; }
+        /* invalid binding: faint red row tint + flagged controls */
+        .imgsaver-resolver .row.invalid { background:rgba(192,80,77,0.14); }
+        .imgsaver-resolver .row.invalid input.field,
+        .imgsaver-resolver .row.invalid select.bad {
+            border-color:var(--error-text, #c0504d); }
+        .imgsaver-resolver button {
+            background:var(--comfy-menu-bg, #333); color:var(--input-text, #ddd);
+            border:1px solid var(--border-color, #444); border-radius:4px;
+            cursor:pointer; font-size:11px; height:22px; }
+        .imgsaver-resolver button:hover { border-color:var(--p-primary-color, #4a90d9); }
+        .imgsaver-resolver button.remove { flex:0 0 24px; }
+        .imgsaver-resolver button.remove:hover {
+            border-color:var(--error-text, #c0504d); color:var(--error-text, #c0504d); }
+        .imgsaver-resolver .toolbar { display:flex; gap:4px; margin-top:3px; }
+        .imgsaver-resolver .toolbar button { flex:1 1 0; height:24px; }
     `;
     document.head.appendChild(style);
 }
@@ -247,7 +269,10 @@ function markValidity(rowEl, graph, row, nodeSel, inputSel) {
     const node = row.nodeId != null ? graph?.getNodeById?.(Number(row.nodeId)) : null;
     const nodeMissing = row.nodeId != null && !node;
     const inputMissing = !!row.input && (!node || !fieldNames(node).has(row.input));
-    rowEl.classList.toggle("invalid", nodeMissing || inputMissing);
+    const invalid = nodeMissing || inputMissing;
+    const bound = !!(row.nodeId && row.input) && !invalid;
+    rowEl.classList.toggle("invalid", invalid);
+    rowEl.classList.toggle("unbound", !invalid && !bound);
     nodeSel.classList.toggle("bad", nodeMissing);
     inputSel.classList.toggle("bad", inputMissing);
     rowEl.title = nodeMissing ? `Node #${row.nodeId} is not in this workflow`
